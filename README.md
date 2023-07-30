@@ -1,0 +1,67 @@
+# withdrawer
+
+Golang utility for proving and finalizing withdrawals from op-stack chains.
+
+### Usage
+
+Install:
+```
+go install github.com/base-org/withdrawer@latest
+```
+
+Initiate a withdrawal on L2 by sending to the `L2StandardBridge` contract at `0x4200000000000000000000000000000000000010`, and note the tx hash.
+Example on Base Goerli: [0xc4055dcb2e4647c37166caba8c7392625c2b62f9117a8bc4d96270da24b38f13](https://goerli.basescan.org/tx/0xc4055dcb2e4647c37166caba8c7392625c2b62f9117a8bc4d96270da24b38f13).
+
+Prove your withdrawal:
+```
+withdrawer --network base-mainnet --withdrawal <withdrawal tx hash> --rpc <L1 RPC URL> --private-key <L1 private key>
+```
+or use a ledger:
+```
+withdrawer --network base-mainnet --withdrawal <withdrawal tx hash> --rpc <L1 RPC URL> --ledger
+```
+
+Example output:
+```
+Proved withdrawal for 0xc4055dcb2e4647c37166caba8c7392625c2b62f9117a8bc4d96270da24b38f13: 0x6b6d1cc45b6601a30646847f638847feb629221ee71bbe6a3de7e6d0fbfe8fad
+waiting for tx confirmation
+0x6b6d1cc45b6601a30646847f638847feb629221ee71bbe6a3de7e6d0fbfe8fad confirmed
+```
+
+After the finalization period, finalize your withdrawal (same command as above):
+```
+withdrawer --network base-mainnet --withdrawal <withdrawal tx hash> --rpc <L1 RPC URL> --private-key <L1 private key>
+```
+
+Example output:
+```
+Completed withdrawal for 0xc4055dcb2e4647c37166caba8c7392625c2b62f9117a8bc4d96270da24b38f13: 0x1c457f1992f48f1f959ceaee5b3c7e699a26f6f05d93997d49dafe703fd66dea
+waiting for tx confirmation
+0x1c457f1992f48f1f959ceaee5b3c7e699a26f6f05d93997d49dafe703fd66dea confirmed
+```
+
+### Flags
+
+```
+Usage of withdrawer:
+    -rpc string
+        Ethereum L1 RPC url
+    -network string
+        op-stack network to withdraw.go from (one of: base-mainnet, base-goerli, op-mainnet, op-goerli) (default "base-mainnet")
+    -withdrawal string
+        TX hash of the L2 withdrawal transaction
+    -private-key string
+        Private key to use for signing transactions
+    -mnemonic string
+        Mnemonic to use for signing transactions
+    -ledger
+        Use ledger device for signing transactions
+    -hd-path string
+        Hierarchical deterministic derivation path for mnemonic or ledger (default "m/44'/60'/0'/0/0")
+    -l2-rpc string
+        Custom network L2 RPC url
+    -l2oo-address string
+        Custom network L2OutputOracle address
+    -portal-address string
+        Custom network OptimismPortal address
+```
