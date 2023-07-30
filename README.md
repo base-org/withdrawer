@@ -2,16 +2,20 @@
 
 Golang utility for proving and finalizing withdrawals from op-stack chains.
 
-### Usage
+### Installation
 
-Install:
 ```
 go install github.com/base-org/withdrawer@latest
 ```
 
+### Usage
+
+#### Step 1
+
 Initiate a withdrawal on L2 by sending to the `L2StandardBridge` contract at `0x4200000000000000000000000000000000000010`, and note the tx hash.
 Example on Base Goerli: [0xc4055dcb2e4647c37166caba8c7392625c2b62f9117a8bc4d96270da24b38f13](https://goerli.basescan.org/tx/0xc4055dcb2e4647c37166caba8c7392625c2b62f9117a8bc4d96270da24b38f13).
 
+#### Step 2
 Prove your withdrawal:
 ```
 withdrawer --network base-mainnet --withdrawal <withdrawal tx hash> --rpc <L1 RPC URL> --private-key <L1 private key>
@@ -28,6 +32,7 @@ waiting for tx confirmation
 0x6b6d1cc45b6601a30646847f638847feb629221ee71bbe6a3de7e6d0fbfe8fad confirmed
 ```
 
+#### Step 3
 After the finalization period, finalize your withdrawal (same command as above):
 ```
 withdrawer --network base-mainnet --withdrawal <withdrawal tx hash> --rpc <L1 RPC URL> --private-key <L1 private key>
