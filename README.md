@@ -1,6 +1,6 @@
 # withdrawer
 
-Golang utility for proving and finalizing withdrawals from op-stack chains.
+Golang utility for proving and finalizing ETH withdrawals from op-stack chains.
 
 ### Installation
 
@@ -12,8 +12,10 @@ go install github.com/base-org/withdrawer@latest
 
 #### Step 1
 
-Initiate a withdrawal on L2 by sending to the `L2StandardBridge` contract at `0x4200000000000000000000000000000000000010`, and note the tx hash.
+Initiate a withdrawal on L2 by sending ETH to the `L2StandardBridge` contract at `0x4200000000000000000000000000000000000010`, and note the tx hash.
 Example on Base Goerli: [0xc4055dcb2e4647c37166caba8c7392625c2b62f9117a8bc4d96270da24b38f13](https://goerli.basescan.org/tx/0xc4055dcb2e4647c37166caba8c7392625c2b62f9117a8bc4d96270da24b38f13).
+
+**_Note: do not send ERC-20 or other tokens to this address, only native ETH is supported._**
 
 #### Step 2
 Prove your withdrawal:
