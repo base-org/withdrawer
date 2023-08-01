@@ -17,7 +17,7 @@ Example on Base Goerli: [0xc4055dcb2e4647c37166caba8c7392625c2b62f9117a8bc4d9627
 
 **_Note: Do not send ERC-20 or other tokens to this address, only native ETH is supported._**
 
-**_Note: Users are required to wait for a period of seven days when moving assets out of Base mainnet into the Ethereum mainnet. This period of time is called the Challenge Period and serves to help secure the assets stored on Base mainnet.._**
+**_Note: Users are required to wait for a period of seven days when moving assets out of Base mainnet into the Ethereum mainnet. This period of time is called the Challenge Period and serves to help secure the assets stored on Base mainnet._**
 
 #### Step 2
 Prove your withdrawal:
