@@ -15,7 +15,9 @@ go install github.com/base-org/withdrawer@latest
 Initiate a withdrawal on L2 by sending ETH to the `L2StandardBridge` contract at `0x4200000000000000000000000000000000000010`, and note the tx hash.
 Example on Base Goerli: [0xc4055dcb2e4647c37166caba8c7392625c2b62f9117a8bc4d96270da24b38f13](https://goerli.basescan.org/tx/0xc4055dcb2e4647c37166caba8c7392625c2b62f9117a8bc4d96270da24b38f13).
 
-**_Note: do not send ERC-20 or other tokens to this address, only native ETH is supported._**
+**_Note: Do not send ERC-20 or other tokens to this address, only native ETH is supported._**
+
+**_Note: Users are required to wait for a period of seven days when moving assets out of Base mainnet into the Ethereum mainnet. This period of time is called the Challenge Period and serves to help secure the assets stored on Base mainnet.._**
 
 #### Step 2
 Prove your withdrawal:
