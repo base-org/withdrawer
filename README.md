@@ -21,9 +21,16 @@ Example on Base Goerli: [0xc4055dcb2e4647c37166caba8c7392625c2b62f9117a8bc4d9627
 
 #### Step 2
 Prove your withdrawal:
+
+Mainnet
 ```
-withdrawer --network base-mainnet --withdrawal <withdrawal tx hash> --rpc <L1 RPC URL> --private-key <L1 private key>
+withdrawer --network base-mainnet --withdrawal <withdrawal tx hash> --rpc <L1 MAINNET RPC URL> --private-key <L1 private key>
 ```
+Goerli
+```
+withdrawer --network base-goerli --withdrawal <withdrawal tx hash> --rpc <L1 GOERLI RPC URL> --private-key <L1 private key>
+```
+
 or use a ledger:
 ```
 withdrawer --network base-mainnet --withdrawal <withdrawal tx hash> --rpc <L1 RPC URL> --ledger
@@ -38,8 +45,14 @@ waiting for tx confirmation
 
 #### Step 3
 After the finalization period, finalize your withdrawal (same command as above):
+
+Mainnet
 ```
-withdrawer --network base-mainnet --withdrawal <withdrawal tx hash> --rpc <L1 RPC URL> --private-key <L1 private key>
+withdrawer --network base-mainnet --withdrawal <withdrawal tx hash> --rpc <L1 MAINNET RPC URL> --private-key <L1 private key>
+```
+Goerli
+```
+withdrawer --network base-goerli --withdrawal <withdrawal tx hash> --rpc <L1 GOERLI RPC URL> --private-key <L1 private key>
 ```
 
 Example output:
@@ -74,3 +87,7 @@ Usage of withdrawer:
     -portal-address string
         Custom network OptimismPortal address
 ```
+
+### P.S.
+1. Need MacOS version >= 12.0
+2. If "go install github.com/base-org/withdrawer@latest" doesn't work, try git clone first, then go install in withdrawer.
