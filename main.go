@@ -9,13 +9,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/base-org/withdrawer/signer"
-	"github.com/base-org/withdrawer/withdraw"
 	"github.com/ethereum-optimism/optimism/op-bindings/bindings"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
+
+	"github.com/base-org/withdrawer/signer"
+	"github.com/base-org/withdrawer/withdraw"
 )
 
 type network struct {
@@ -180,6 +181,11 @@ func main() {
 		log.Fatalf("Error querying output proposal submission interval: %v", err)
 	}
 
+	l2BlockTime, err := l2oo.L2BLOCKTIME(&bind.CallOpts{})
+	if err != nil {
+		log.Fatalf("Error querying output proposal L2 block time: %v", err)
+	}
+
 	l2OutputBlock, err := l2oo.LatestBlockNumber(&bind.CallOpts{})
 	if err != nil {
 		log.Fatalf("Error querying latest proposed block: %v", err)
@@ -192,7 +198,7 @@ func main() {
 
 	if l2OutputBlock.Uint64() < l2WithdrawalBlock.Uint64() {
 		log.Fatalf("The latest L2 output is %d and is not past L2 block %d that includes the withdrawal, no withdrawal can be proved yet.\nPlease wait for the next proposal submission to %s, which happens every %v.",
-			l2OutputBlock.Uint64(), l2WithdrawalBlock.Uint64(), n.l2OOAddress, time.Duration(submissionInterval.Int64())*time.Second)
+			l2OutputBlock.Uint64(), l2WithdrawalBlock.Uint64(), n.l2OOAddress, time.Duration(submissionInterval.Int64()*l2BlockTime.Int64())*time.Second)
 	}
 
 	proof, err := withdraw.ProvenWithdrawal(ctx, l2Client, portal, withdrawal)
