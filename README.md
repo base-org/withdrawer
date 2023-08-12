@@ -36,6 +36,8 @@ waiting for tx confirmation
 0x6b6d1cc45b6601a30646847f638847feb629221ee71bbe6a3de7e6d0fbfe8fad confirmed
 ```
 
+_Note: this can be called from any L1 address, it does not have to be the same address that initiated the withdrawal on the L2._
+
 #### Step 3
 After the finalization period, finalize your withdrawal (same command as above):
 ```
@@ -48,6 +50,8 @@ Completed withdrawal for 0xc4055dcb2e4647c37166caba8c7392625c2b62f9117a8bc4d9627
 waiting for tx confirmation
 0x1c457f1992f48f1f959ceaee5b3c7e699a26f6f05d93997d49dafe703fd66dea confirmed
 ```
+
+_Note: this can be called from any L1 address, it does not have to be the same address that initiated the withdrawal on the L2._
 
 ### Flags
 
