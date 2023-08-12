@@ -149,9 +149,9 @@ func CompleteWithdrawal(ctx context.Context, l1 *ethclient.Client, l2c *rpc.Clie
 	}
 
 	// Check if the withdrawal may be completed yet
-	if l2OutputBlock.Time()+finalizationPeriod.Uint64() >= l1Head.Time {
+	if l2WithdrawalBlock.Time()+finalizationPeriod.Uint64() >= l1Head.Time {
 		return fmt.Errorf("withdrawal tx %s was included in L2 block %d (time %d) but L1 only knows of L2 proposal %d (time %d) at head %d (time %d) which has not reached output confirmation yet (period is %d)",
-			l2TxHash, l2WithdrawalBlock.NumberU64(), l2WithdrawalBlock.Time(), l2OutputBlock.NumberU64(), l2OutputBlock.Time(), finalizationPeriod.Uint64(), l1Head.Number.Uint64(), l1Head.Time)
+			l2TxHash, l2WithdrawalBlock.NumberU64(), l2WithdrawalBlock.Time(), l2OutputBlock.NumberU64(), l2OutputBlock.Time(), l1Head.Number.Uint64(), l1Head.Time, finalizationPeriod.Uint64())
 	}
 
 	// We generate a proof for the latest L2 output, which shouldn't require archive-node data if it's recent enough.
