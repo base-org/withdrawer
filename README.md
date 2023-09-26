@@ -1,3 +1,5 @@
+![Base](logo.webp)
+
 # withdrawer
 
 Golang utility for proving and finalizing ETH withdrawals from op-stack chains.
