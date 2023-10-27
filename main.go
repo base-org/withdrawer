@@ -171,6 +171,15 @@ func main() {
 		log.Fatalf("Error binding L2OutputOracle contract: %v", err)
 	}
 
+	isFinalized, err := withdraw.ProofFinalized(ctx, portal, withdrawal)
+	if err != nil {
+		log.Fatalf("Error querying withdrawal finalization status: %v", err)
+	}
+	if isFinalized {
+		fmt.Println("Withdrawal already finalized")
+		return
+	}
+
 	finalizationPeriod, err := l2oo.FINALIZATIONPERIODSECONDS(&bind.CallOpts{})
 	if err != nil {
 		log.Fatalf("Error querying withdrawal finalization period: %v", err)
