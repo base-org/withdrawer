@@ -31,6 +31,10 @@ func TxBlock(ctx context.Context, l2c *rpc.Client, l2TxHash common.Hash) (*big.I
 	return receipt.BlockNumber, nil
 }
 
+func ProofFinalized(ctx context.Context, portal *bindings.OptimismPortal, l2TxHash common.Hash) (bool, error) {
+	return portal.FinalizedWithdrawals(&bind.CallOpts{}, l2TxHash)
+}
+
 func ProvenWithdrawal(ctx context.Context, l2c *rpc.Client, portal *bindings.OptimismPortal, l2TxHash common.Hash) (struct {
 	OutputRoot    [32]byte
 	Timestamp     *big.Int
@@ -106,7 +110,10 @@ func ProveWithdrawal(ctx context.Context, l1 *ethclient.Client, l2c *rpc.Client,
 
 	fmt.Printf("Proved withdrawal for %s: %s\n", l2TxHash.String(), tx.Hash().String())
 
-	return waitForConfirmation(ctx, l1, tx.Hash())
+	// Wait 5 mins max for confirmation
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
+	return waitForConfirmation(ctxWithTimeout, l1, tx.Hash())
 }
 
 func CompleteWithdrawal(ctx context.Context, l1 *ethclient.Client, l2c *rpc.Client, l2oo *bindings.L2OutputOracle, portal *bindings.OptimismPortal, l2TxHash common.Hash, finalizationPeriod *big.Int, opts *bind.TransactOpts) error {
@@ -140,7 +147,8 @@ func CompleteWithdrawal(ctx context.Context, l1 *ethclient.Client, l2c *rpc.Clie
 
 	// Check if the L2 output is even old enough to include the withdrawal
 	if l2OutputBlock.NumberU64() < l2WithdrawalBlock.NumberU64() {
-		return fmt.Errorf("the latest L2 output is %d and is not past L2 block %d that includes the withdrawal yet, no withdrawal can be completed yet", l2OutputBlock.NumberU64(), l2WithdrawalBlock.NumberU64())
+		fmt.Printf("the latest L2 output is %d and is not past L2 block %d that includes the withdrawal yet, no withdrawal can be completed yet", l2OutputBlock.NumberU64(), l2WithdrawalBlock.NumberU64())
+		return nil
 	}
 
 	l1Head, err := l1.HeaderByNumber(ctx, nil)
@@ -150,8 +158,9 @@ func CompleteWithdrawal(ctx context.Context, l1 *ethclient.Client, l2c *rpc.Clie
 
 	// Check if the withdrawal may be completed yet
 	if l2WithdrawalBlock.Time()+finalizationPeriod.Uint64() >= l1Head.Time {
-		return fmt.Errorf("withdrawal tx %s was included in L2 block %d (time %d) but L1 only knows of L2 proposal %d (time %d) at head %d (time %d) which has not reached output confirmation yet (period is %d)",
+		fmt.Printf("withdrawal tx %s was included in L2 block %d (time %d) but L1 only knows of L2 proposal %d (time %d) at head %d (time %d) which has not reached output confirmation yet (period is %d)",
 			l2TxHash, l2WithdrawalBlock.NumberU64(), l2WithdrawalBlock.Time(), l2OutputBlock.NumberU64(), l2OutputBlock.Time(), l1Head.Number.Uint64(), l1Head.Time, finalizationPeriod.Uint64())
+		return nil
 	}
 
 	// We generate a proof for the latest L2 output, which shouldn't require archive-node data if it's recent enough.
@@ -185,7 +194,10 @@ func CompleteWithdrawal(ctx context.Context, l1 *ethclient.Client, l2c *rpc.Clie
 
 	fmt.Printf("Completed withdrawal for %s: %s\n", l2TxHash.String(), tx.Hash().String())
 
-	return waitForConfirmation(ctx, l1, tx.Hash())
+	// Wait 5 mins max for confirmation
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
+	return waitForConfirmation(ctxWithTimeout, l1, tx.Hash())
 }
 
 func waitForConfirmation(ctx context.Context, client *ethclient.Client, tx common.Hash) error {
