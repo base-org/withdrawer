@@ -123,15 +123,15 @@ func CompleteWithdrawal(ctx context.Context, l1 *ethclient.Client, l2c *rpc.Clie
 	// Figure out when our withdrawal was included
 	receipt, err := l2.TransactionReceipt(ctx, l2TxHash)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot get receipt for withdrawal tx %s: %v", l2TxHash, err)
 	}
 	if receipt.Status != types.ReceiptStatusSuccessful {
 		return errors.New("unsuccessful withdrawal receipt status")
 	}
 
-	l2WithdrawalBlock, err := l2.BlockByNumber(ctx, receipt.BlockNumber)
+	l2WithdrawalBlock, err := l2.HeaderByNumber(ctx, receipt.BlockNumber)
 	if err != nil {
-		return err
+		return fmt.Errorf("error getting header by number for block %s: %v", receipt.BlockNumber, err)
 	}
 
 	// Figure out what the Output oracle on L1 has seen so far
@@ -140,14 +140,14 @@ func CompleteWithdrawal(ctx context.Context, l1 *ethclient.Client, l2c *rpc.Clie
 		return err
 	}
 
-	l2OutputBlock, err := l2.BlockByNumber(ctx, l2OutputBlockNr)
+	l2OutputBlock, err := l2.HeaderByNumber(ctx, l2OutputBlockNr)
 	if err != nil {
-		return err
+		return fmt.Errorf("error getting header by number for latest block %s: %v", l2OutputBlockNr, err)
 	}
 
 	// Check if the L2 output is even old enough to include the withdrawal
-	if l2OutputBlock.NumberU64() < l2WithdrawalBlock.NumberU64() {
-		fmt.Printf("the latest L2 output is %d and is not past L2 block %d that includes the withdrawal yet, no withdrawal can be completed yet", l2OutputBlock.NumberU64(), l2WithdrawalBlock.NumberU64())
+	if l2OutputBlock.Number.Uint64() < l2WithdrawalBlock.Number.Uint64() {
+		fmt.Printf("the latest L2 output is %d and is not past L2 block %d that includes the withdrawal yet, no withdrawal can be completed yet", l2OutputBlock.Number.Uint64(), l2WithdrawalBlock.Number.Uint64())
 		return nil
 	}
 
@@ -157,9 +157,9 @@ func CompleteWithdrawal(ctx context.Context, l1 *ethclient.Client, l2c *rpc.Clie
 	}
 
 	// Check if the withdrawal may be completed yet
-	if l2WithdrawalBlock.Time()+finalizationPeriod.Uint64() >= l1Head.Time {
+	if l2WithdrawalBlock.Time+finalizationPeriod.Uint64() >= l1Head.Time {
 		fmt.Printf("withdrawal tx %s was included in L2 block %d (time %d) but L1 only knows of L2 proposal %d (time %d) at head %d (time %d) which has not reached output confirmation yet (period is %d)",
-			l2TxHash, l2WithdrawalBlock.NumberU64(), l2WithdrawalBlock.Time(), l2OutputBlock.NumberU64(), l2OutputBlock.Time(), l1Head.Number.Uint64(), l1Head.Time, finalizationPeriod.Uint64())
+			l2TxHash, l2WithdrawalBlock.Number.Uint64(), l2WithdrawalBlock.Time, l2OutputBlock.Number.Uint64(), l2OutputBlock.Time, l1Head.Number.Uint64(), l1Head.Time, finalizationPeriod.Uint64())
 		return nil
 	}
 
