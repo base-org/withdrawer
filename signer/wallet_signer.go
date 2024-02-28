@@ -13,25 +13,30 @@ import (
 	"github.com/tyler-smith/go-bip39"
 )
 
+// walletSigner represents a signer based on a wallet account.
 type walletSigner struct {
 	wallet  accounts.Wallet
 	account accounts.Account
 }
 
+// Address returns the Ethereum address associated with the signer.
 func (s *walletSigner) Address() common.Address {
 	return s.account.Address
 }
 
+// SignerFn returns a signer function used for transaction signing.
 func (s *walletSigner) SignerFn(chainID *big.Int) bind.SignerFn {
 	return func(address common.Address, tx *types.Transaction) (*types.Transaction, error) {
 		return s.wallet.SignTx(s.account, tx, chainID)
 	}
 }
 
+// SignData signs the given data using the signer's private key.
 func (s *walletSigner) SignData(data []byte) ([]byte, error) {
 	return s.wallet.SignData(s.account, accounts.MimetypeTypedData, data)
 }
 
+// derivePrivateKey derives an ECDSA private key from a mnemonic phrase and derivation path.
 func derivePrivateKey(mnemonic string, path accounts.DerivationPath) (*ecdsa.PrivateKey, error) {
 	// Parse the seed string into the master BIP32 key.
 	seed, err := bip39.NewSeedWithErrorChecking(mnemonic, "")
@@ -39,6 +44,7 @@ func derivePrivateKey(mnemonic string, path accounts.DerivationPath) (*ecdsa.Pri
 		return nil, err
 	}
 
+	// Derive the private key based on the derivation path.
 	privKey, err := hdkeychain.NewMaster(seed, fakeNetworkParams{})
 	if err != nil {
 		return nil, err
@@ -51,6 +57,7 @@ func derivePrivateKey(mnemonic string, path accounts.DerivationPath) (*ecdsa.Pri
 		}
 	}
 
+	// Serialize the private key and convert it to an ECDSA private key.
 	rawPrivKey, err := privKey.SerializedPrivKey()
 	if err != nil {
 		return nil, err
@@ -59,6 +66,7 @@ func derivePrivateKey(mnemonic string, path accounts.DerivationPath) (*ecdsa.Pri
 	return crypto.ToECDSA(rawPrivKey)
 }
 
+// fakeNetworkParams is used for HD key derivation and provides fake network parameters.
 type fakeNetworkParams struct{}
 
 func (f fakeNetworkParams) HDPrivKeyVersion() [4]byte {
