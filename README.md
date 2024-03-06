@@ -26,7 +26,9 @@ Golang utility for proving and finalizing ETH withdrawals from op-stack chains.
 ### Installation
 
 ```
-go install github.com/base-org/withdrawer@latest
+git clone https://github.com/base-org/withdrawer.git
+cd withdrawer
+go install .
 ```
 
 ### Usage
