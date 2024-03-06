@@ -31,20 +31,20 @@ var networks = map[string]network{
 		portalAddress: "0x49048044D57e1C92A77f79988d21Fa8fAF74E97e",
 		l2OOAddress:   "0x56315b90c40730925ec5485cf004d835058518A0",
 	},
-	"base-goerli": {
-		l2RPC:         "https://goerli.base.org",
-		portalAddress: "0xe93c8cD0D409341205A592f8c4Ac1A5fe5585cfA",
-		l2OOAddress:   "0x2A35891ff30313CcFa6CE88dcf3858bb075A2298",
+	"base-sepolia": {
+		l2RPC:         "https://sepolia.base.org",
+		portalAddress: "0x49f53e41452C74589E85cA1677426Ba426459e85",
+		l2OOAddress:   "0x84457ca9D0163FbC4bbfe4Dfbb20ba46e48DF254",
 	},
 	"op-mainnet": {
 		l2RPC:         "https://mainnet.optimism.io",
 		portalAddress: "0xbEb5Fc579115071764c7423A4f12eDde41f106Ed",
 		l2OOAddress:   "0xdfe97868233d1aa22e815a266982f2cf17685a27",
 	},
-	"op-goerli": {
-		l2RPC:         "https://goerli.optimism.io",
-		portalAddress: "0x5b47E1A08Ea6d985D6649300584e6722Ec4B1383",
-		l2OOAddress:   "0xE6Dfba0953616Bacab0c9A8ecb3a9BBa77FC15c0",
+	"op-sepolia": {
+		l2RPC:         "https://sepolia.optimism.io",
+		portalAddress: "0x16Fc5058F25648194471939df75CF27A2fdC48BC",
+		l2OOAddress:   "0x90E9c4f8a994a250F6aEfd61CAFb4F2e895D458F",
 	},
 }
 
