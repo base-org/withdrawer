@@ -36,7 +36,7 @@ func (s *walletSigner) SignData(data []byte) ([]byte, error) {
 	return s.wallet.SignData(s.account, accounts.MimetypeTypedData, data)
 }
 
-// derivePrivateKey derives an ECDSA private key from a mnemonic phrase and derivation path.
+// derivePrivateKeyFromMnemonic derives an ECDSA private key from a mnemonic phrase and derivation path.
 func derivePrivateKeyFromMnemonic(mnemonic string, path accounts.DerivationPath) (*ecdsa.PrivateKey, error) {
 	// Parse the seed string into the master BIP32 key.
 	seed, err := bip39.NewSeedWithErrorChecking(mnemonic, "")
