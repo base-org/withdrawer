@@ -74,17 +74,12 @@ func ProveWithdrawal(ctx context.Context, l1 *ethclient.Client, l2c *rpc.Client,
 		return err
 	}
 
-	l2OutputIndex, err := l2oo.GetL2OutputIndexAfter(&bind.CallOpts{}, l2OutputBlock)
-	if err != nil {
-		return err
-	}
-
 	// We generate a proof for the latest L2 output, which shouldn't require archive-node data if it's recent enough.
 	header, err := l2.HeaderByNumber(ctx, l2OutputBlock)
 	if err != nil {
 		return err
 	}
-	params, err := withdrawals.ProveWithdrawalParameters(ctx, l2g, l2, l2TxHash, header, &l2oo.L2OutputOracleCaller)
+	params, err := withdrawals.ProveWithdrawalParameters(ctx, l2g, l2, l2, l2TxHash, header, &l2oo.L2OutputOracleCaller)
 	if err != nil {
 		return err
 	}
@@ -100,7 +95,7 @@ func ProveWithdrawal(ctx context.Context, l1 *ethclient.Client, l2c *rpc.Client,
 			GasLimit: params.GasLimit,
 			Data:     params.Data,
 		},
-		l2OutputIndex,
+		params.L2OutputIndex,
 		params.OutputRootProof,
 		params.WithdrawalProof,
 	)
@@ -171,7 +166,7 @@ func CompleteWithdrawal(ctx context.Context, l1 *ethclient.Client, l2c *rpc.Clie
 		return err
 	}
 
-	params, err := withdrawals.ProveWithdrawalParameters(ctx, l2g, l2, l2TxHash, header, &l2oo.L2OutputOracleCaller)
+	params, err := withdrawals.ProveWithdrawalParameters(ctx, l2g, l2, l2, l2TxHash, header, &l2oo.L2OutputOracleCaller)
 	if err != nil {
 		return err
 	}
