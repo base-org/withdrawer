@@ -4,12 +4,15 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
 	"math/big"
+	"os"
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/log"
+
 	"github.com/ethereum-optimism/optimism/op-bindings/bindings"
+	oplog "github.com/ethereum-optimism/optimism/op-service/log"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -76,22 +79,22 @@ func main() {
 	flag.StringVar(&hdPath, "hd-path", "m/44'/60'/0'/0/0", "Hierarchical deterministic derivation path for mnemonic or ledger")
 	flag.Parse()
 
-	log.Default().SetFlags(0)
+	log.SetDefault(oplog.NewLogger(os.Stderr, oplog.DefaultCLIConfig()))
 
 	n, ok := networks[networkFlag]
 	if !ok {
-		log.Fatalf("Unknown network: %s", networkFlag)
+		log.Crit("Unknown network", "network", networkFlag)
 	}
 
 	if l2RpcFlag != "" || portalAddress != "" || l2OOAddress != "" {
 		if l2RpcFlag == "" {
-			log.Fatalf("Missing --l2-rpc flag")
+			log.Crit("Missing --l2-rpc flag")
 		}
 		if portalAddress == "" {
-			log.Fatalf("Missing --portal-address flag")
+			log.Crit("Missing --portal-address flag")
 		}
 		if l2OOAddress == "" {
-			log.Fatalf("Missing --l2oo-address flag")
+			log.Crit("Missing --l2oo-address flag")
 		}
 		n = network{
 			l2RPC:         l2RpcFlag,
@@ -101,11 +104,11 @@ func main() {
 	}
 
 	if rpcFlag == "" {
-		log.Fatalf("Missing --rpc flag")
+		log.Crit("Missing --rpc flag")
 	}
 
 	if withdrawalFlag == "" {
-		log.Fatalf("Missing --withdrawal flag")
+		log.Crit("Missing --withdrawal flag")
 	}
 	withdrawal := common.HexToHash(withdrawalFlag)
 
@@ -120,29 +123,29 @@ func main() {
 		options++
 	}
 	if options != 1 {
-		log.Fatalf("One (and only one) of --private-key, --ledger, --mnemonic must be set")
+		log.Crit("One (and only one) of --private-key, --ledger, --mnemonic must be set")
 	}
 
 	s, err := signer.CreateSigner(privateKey, mnemonic, hdPath)
 	if err != nil {
-		log.Fatalf("Error creating signer: %v", err)
+		log.Crit("Error creating signer", "error", err)
 	}
 
 	ctx := context.Background()
 
 	l1Client, err := ethclient.DialContext(ctx, rpcFlag)
 	if err != nil {
-		log.Fatalf("Error dialing L1 client: %v", err)
+		log.Crit("Error dialing L1 client", "error", err)
 	}
 
 	l1ChainID, err := l1Client.ChainID(ctx)
 	if err != nil {
-		log.Fatalf("Error querying chain ID: %v", err)
+		log.Crit("Error querying chain ID", "error", err)
 	}
 
 	l1Nonce, err := l1Client.PendingNonceAt(ctx, s.Address())
 	if err != nil {
-		log.Fatalf("Error querying nonce: %v", err)
+		log.Crit("Error querying nonce", "error", err)
 	}
 
 	l1opts := &bind.TransactOpts{
@@ -158,22 +161,22 @@ func main() {
 
 	l2Client, err := rpc.DialContext(ctx, n.l2RPC)
 	if err != nil {
-		log.Fatalf("Error dialing L2 client: %v", err)
+		log.Crit("Error dialing L2 client", "error", err)
 	}
 
 	portal, err := bindings.NewOptimismPortal(common.HexToAddress(n.portalAddress), l1Client)
 	if err != nil {
-		log.Fatalf("Error binding OptimismPortal contract: %v", err)
+		log.Crit("Error binding OptimismPortal contract", "error", err)
 	}
 
 	l2oo, err := bindings.NewL2OutputOracle(common.HexToAddress(n.l2OOAddress), l1Client)
 	if err != nil {
-		log.Fatalf("Error binding L2OutputOracle contract: %v", err)
+		log.Crit("Error binding L2OutputOracle contract", "error", err)
 	}
 
 	isFinalized, err := withdraw.ProofFinalized(ctx, portal, withdrawal)
 	if err != nil {
-		log.Fatalf("Error querying withdrawal finalization status: %v", err)
+		log.Crit("Error querying withdrawal finalization status", "error", err)
 	}
 	if isFinalized {
 		fmt.Println("Withdrawal already finalized")
@@ -182,43 +185,43 @@ func main() {
 
 	finalizationPeriod, err := l2oo.FINALIZATIONPERIODSECONDS(&bind.CallOpts{})
 	if err != nil {
-		log.Fatalf("Error querying withdrawal finalization period: %v", err)
+		log.Crit("Error querying withdrawal finalization period", "error", err)
 	}
 
 	submissionInterval, err := l2oo.SUBMISSIONINTERVAL(&bind.CallOpts{})
 	if err != nil {
-		log.Fatalf("Error querying output proposal submission interval: %v", err)
+		log.Crit("Error querying output proposal submission interval", "error", err)
 	}
 
 	l2BlockTime, err := l2oo.L2BLOCKTIME(&bind.CallOpts{})
 	if err != nil {
-		log.Fatalf("Error querying output proposal L2 block time: %v", err)
+		log.Crit("Error querying output proposal L2 block time", "error", err)
 	}
 
 	l2OutputBlock, err := l2oo.LatestBlockNumber(&bind.CallOpts{})
 	if err != nil {
-		log.Fatalf("Error querying latest proposed block: %v", err)
+		log.Crit("Error querying latest proposed block", "error", err)
 	}
 
 	l2WithdrawalBlock, err := withdraw.TxBlock(ctx, l2Client, withdrawal)
 	if err != nil {
-		log.Fatalf("Error querying withdrawal tx block: %v", err)
+		log.Crit("Error querying withdrawal tx block", "error", err)
 	}
 
 	if l2OutputBlock.Uint64() < l2WithdrawalBlock.Uint64() {
-		log.Fatalf("The latest L2 output is %d and is not past L2 block %d that includes the withdrawal, no withdrawal can be proved yet.\nPlease wait for the next proposal submission to %s, which happens every %v.",
-			l2OutputBlock.Uint64(), l2WithdrawalBlock.Uint64(), n.l2OOAddress, time.Duration(submissionInterval.Int64()*l2BlockTime.Int64())*time.Second)
+		log.Crit(fmt.Sprintf("The latest L2 output is %d and is not past L2 block %d that includes the withdrawal, no withdrawal can be proved yet.\nPlease wait for the next proposal submission to %s, which happens every %v.",
+			l2OutputBlock.Uint64(), l2WithdrawalBlock.Uint64(), n.l2OOAddress, time.Duration(submissionInterval.Int64()*l2BlockTime.Int64())*time.Second))
 	}
 
 	proof, err := withdraw.ProvenWithdrawal(ctx, l2Client, portal, withdrawal)
 	if err != nil {
-		log.Fatalf("Error querying withdrawal proof: %v", err)
+		log.Crit("Error querying withdrawal proof", "error", err)
 	}
 
 	if proof.Timestamp.Uint64() == 0 {
 		err = withdraw.ProveWithdrawal(ctx, l1Client, l2Client, l2oo, portal, withdrawal, newl1opts())
 		if err != nil {
-			log.Fatalf("Error proving withdrawal: %v", err)
+			log.Crit("Error proving withdrawal", "error", err)
 		}
 		fmt.Printf("The withdrawal can be completed after the finalization period, in approximately %v\n", time.Duration(finalizationPeriod.Int64())*time.Second)
 		return
@@ -226,6 +229,6 @@ func main() {
 
 	err = withdraw.CompleteWithdrawal(ctx, l1Client, l2Client, l2oo, portal, withdrawal, finalizationPeriod, newl1opts())
 	if err != nil {
-		log.Fatalf("Error completing withdrawal: %v", err)
+		log.Crit("Error completing withdrawal", "error", err)
 	}
 }
