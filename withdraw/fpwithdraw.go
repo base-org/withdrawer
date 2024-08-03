@@ -15,9 +15,19 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
-func getWithdrawalHash(ctx context.Context, l2c *rpc.Client, l2TxHash common.Hash) (common.Hash, error) {
-	l2 := ethclient.NewClient(l2c)
-	receipt, err := l2.TransactionReceipt(ctx, l2TxHash)
+type FPWithdrawer struct {
+	Ctx      context.Context
+	L1Client *ethclient.Client
+	L2Client *rpc.Client
+	L2TxHash common.Hash
+	Portal   *bindingspreview.OptimismPortal2
+	Factory  *bindings.DisputeGameFactory
+	Opts     *bind.TransactOpts
+}
+
+func (w *FPWithdrawer) GetWithdrawalHash() (common.Hash, error) {
+	l2 := ethclient.NewClient(w.L2Client)
+	receipt, err := l2.TransactionReceipt(w.Ctx, w.L2TxHash)
 	if err != nil {
 		return common.HexToHash(""), err
 	}
@@ -35,11 +45,11 @@ func getWithdrawalHash(ctx context.Context, l2c *rpc.Client, l2TxHash common.Has
 	return hash, nil
 }
 
-func FpProofFinalized(ctx context.Context, portal *bindingspreview.OptimismPortal2, l2TxHash common.Hash) (bool, error) {
-	return portal.FinalizedWithdrawals(&bind.CallOpts{}, l2TxHash)
+func (w *FPWithdrawer) IsProofFinalized() (bool, error) {
+	return w.Portal.FinalizedWithdrawals(&bind.CallOpts{}, w.L2TxHash)
 }
 
-func FpProvenWithdrawal(ctx context.Context, l2c *rpc.Client, portal *bindingspreview.OptimismPortal2, l2TxHash common.Hash, submitter common.Address) (struct {
+func (w *FPWithdrawer) GetProvenWithdrawal() (struct {
 	DisputeGameProxy common.Address
 	Timestamp        uint64
 }, error) {
@@ -49,26 +59,26 @@ func FpProvenWithdrawal(ctx context.Context, l2c *rpc.Client, portal *bindingspr
 		Timestamp        uint64
 	})
 
-	hash, err := getWithdrawalHash(ctx, l2c, l2TxHash)
+	hash, err := w.GetWithdrawalHash()
 	if err != nil {
 		return empty, err
 	}
 
-	return portal.ProvenWithdrawals(&bind.CallOpts{}, hash, submitter)
+	return w.Portal.ProvenWithdrawals(&bind.CallOpts{}, hash, w.Opts.From)
 }
 
-func FpProveWithdrawal(ctx context.Context, l1 *ethclient.Client, l2c *rpc.Client, disputeGameFactory *bindings.DisputeGameFactory, portal *bindingspreview.OptimismPortal2, l2TxHash common.Hash, opts *bind.TransactOpts) error {
-	l2 := ethclient.NewClient(l2c)
-	l2g := gethclient.New(l2c)
+func (w *FPWithdrawer) ProveWithdrawal() error {
+	l2 := ethclient.NewClient(w.L2Client)
+	l2g := gethclient.New(w.L2Client)
 
-	params, err := withdrawals.ProveWithdrawalParametersFaultProofs(ctx, l2g, l2, l2, l2TxHash, &disputeGameFactory.DisputeGameFactoryCaller, &portal.OptimismPortal2Caller)
+	params, err := withdrawals.ProveWithdrawalParametersFaultProofs(w.Ctx, l2g, l2, l2, w.L2TxHash, &w.Factory.DisputeGameFactoryCaller, &w.Portal.OptimismPortal2Caller)
 	if err != nil {
 		return err
 	}
 
 	// create the proof
-	tx, err := portal.ProveWithdrawalTransaction(
-		opts,
+	tx, err := w.Portal.ProveWithdrawalTransaction(
+		w.Opts,
 		bindingspreview.TypesWithdrawalTransaction{
 			Nonce:    params.Nonce,
 			Sender:   params.Sender,
@@ -90,40 +100,40 @@ func FpProveWithdrawal(ctx context.Context, l1 *ethclient.Client, l2c *rpc.Clien
 		return err
 	}
 
-	fmt.Printf("Proved withdrawal for %s: %s\n", l2TxHash.String(), tx.Hash().String())
+	fmt.Printf("Proved withdrawal for %s: %s\n", w.L2TxHash.String(), tx.Hash().String())
 
 	// Wait 5 mins max for confirmation
-	ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	ctxWithTimeout, cancel := context.WithTimeout(w.Ctx, 5*time.Minute)
 	defer cancel()
-	return WaitForConfirmation(ctxWithTimeout, l1, tx.Hash())
+	return WaitForConfirmation(ctxWithTimeout, w.L1Client, tx.Hash())
 }
 
-func FpFinalizeWithdrawal(ctx context.Context, l1 *ethclient.Client, l2c *rpc.Client, disputeGameFactory *bindings.DisputeGameFactory, portal *bindingspreview.OptimismPortal2, l2TxHash common.Hash, opts *bind.TransactOpts) error {
+func (w *FPWithdrawer) FinalizeWithdrawal() error {
 	// get the withdrawal hash
-	hash, err := getWithdrawalHash(ctx, l2c, l2TxHash)
+	hash, err := w.GetWithdrawalHash()
 	if err != nil {
 		return err
 	}
 
 	// check if the withdrawal can be finalized using the calculated withdrawal hash
-	err = portal.CheckWithdrawal(&bind.CallOpts{}, hash, opts.From)
+	err = w.Portal.CheckWithdrawal(&bind.CallOpts{}, hash, w.Opts.From)
 	if err != nil {
 		return err
 	}
 
 	// get the WithdrawalTransaction info needed to finalize the withdrawal
-	l2 := ethclient.NewClient(l2c)
-	l2g := gethclient.New(l2c)
+	l2 := ethclient.NewClient(w.L2Client)
+	l2g := gethclient.New(w.L2Client)
 
 	// we only use info from this call that isn't block-specific, so it's safe to call this again
-	params, err := withdrawals.ProveWithdrawalParametersFaultProofs(ctx, l2g, l2, l2, l2TxHash, &disputeGameFactory.DisputeGameFactoryCaller, &portal.OptimismPortal2Caller)
+	params, err := withdrawals.ProveWithdrawalParametersFaultProofs(w.Ctx, l2g, l2, l2, w.L2TxHash, &w.Factory.DisputeGameFactoryCaller, &w.Portal.OptimismPortal2Caller)
 	if err != nil {
 		return err
 	}
 
 	// finalize the withdrawal
-	tx, err := portal.FinalizeWithdrawalTransaction(
-		opts,
+	tx, err := w.Portal.FinalizeWithdrawalTransaction(
+		w.Opts,
 		bindingspreview.TypesWithdrawalTransaction{
 			Nonce:    params.Nonce,
 			Sender:   params.Sender,
@@ -137,10 +147,10 @@ func FpFinalizeWithdrawal(ctx context.Context, l1 *ethclient.Client, l2c *rpc.Cl
 		return err
 	}
 
-	fmt.Printf("Completed withdrawal for %s: %s\n", l2TxHash.String(), tx.Hash().String())
+	fmt.Printf("Completed withdrawal for %s: %s\n", w.L2TxHash.String(), tx.Hash().String())
 
 	// Wait 5 mins max for confirmation
-	ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	ctxWithTimeout, cancel := context.WithTimeout(w.Ctx, 5*time.Minute)
 	defer cancel()
-	return WaitForConfirmation(ctxWithTimeout, l1, tx.Hash())
+	return WaitForConfirmation(ctxWithTimeout, w.L1Client, tx.Hash())
 }
