@@ -11,7 +11,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/log"
 
-	"github.com/ethereum-optimism/optimism/op-bindings/bindings"
+	"github.com/ethereum-optimism/optimism/op-node/bindings"
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -23,31 +23,41 @@ import (
 )
 
 type network struct {
-	l2RPC         string
-	portalAddress string
-	l2OOAddress   string
+	l2RPC              string
+	portalAddress      string
+	l2OOAddress        string
+	disputeGameFactory string
+	faultProofs        bool
 }
 
 var networks = map[string]network{
 	"base-mainnet": {
-		l2RPC:         "https://mainnet.base.org",
-		portalAddress: "0x49048044D57e1C92A77f79988d21Fa8fAF74E97e",
-		l2OOAddress:   "0x56315b90c40730925ec5485cf004d835058518A0",
+		l2RPC:              "https://mainnet.base.org",
+		portalAddress:      "0x49048044D57e1C92A77f79988d21Fa8fAF74E97e",
+		l2OOAddress:        "0x56315b90c40730925ec5485cf004d835058518A0",
+		disputeGameFactory: "0x0000000000000000000000000000000000000000",
+		faultProofs:        false,
 	},
 	"base-sepolia": {
-		l2RPC:         "https://sepolia.base.org",
-		portalAddress: "0x49f53e41452C74589E85cA1677426Ba426459e85",
-		l2OOAddress:   "0x84457ca9D0163FbC4bbfe4Dfbb20ba46e48DF254",
+		l2RPC:              "https://sepolia.base.org",
+		portalAddress:      "0x49f53e41452C74589E85cA1677426Ba426459e85",
+		l2OOAddress:        "0x0000000000000000000000000000000000000000",
+		disputeGameFactory: "0xd6E6dBf4F7EA0ac412fD8b65ED297e64BB7a06E1",
+		faultProofs:        true,
 	},
 	"op-mainnet": {
-		l2RPC:         "https://mainnet.optimism.io",
-		portalAddress: "0xbEb5Fc579115071764c7423A4f12eDde41f106Ed",
-		l2OOAddress:   "0xdfe97868233d1aa22e815a266982f2cf17685a27",
+		l2RPC:              "https://mainnet.optimism.io",
+		portalAddress:      "0xbEb5Fc579115071764c7423A4f12eDde41f106Ed",
+		l2OOAddress:        "0x0000000000000000000000000000000000000000",
+		disputeGameFactory: "0xe5965Ab5962eDc7477C8520243A95517CD252fA9",
+		faultProofs:        true,
 	},
 	"op-sepolia": {
-		l2RPC:         "https://sepolia.optimism.io",
-		portalAddress: "0x16Fc5058F25648194471939df75CF27A2fdC48BC",
-		l2OOAddress:   "0x90E9c4f8a994a250F6aEfd61CAFb4F2e895D458F",
+		l2RPC:              "https://sepolia.optimism.io",
+		portalAddress:      "0x16Fc5058F25648194471939df75CF27A2fdC48BC",
+		l2OOAddress:        "0x0000000000000000000000000000000000000000",
+		disputeGameFactory: "0x05F9613aDB30026FFd634f38e5C4dFd30a197Fa1",
+		faultProofs:        true,
 	},
 }
 
