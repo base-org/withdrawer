@@ -148,7 +148,7 @@ Usage of withdrawer:
     -rpc string
         Ethereum L1 RPC url
     -network string
-        op-stack network to withdraw.go from (one of: base-mainnet, base-goerli, op-mainnet, op-goerli) (default "base-mainnet")
+        op-stack network to withdraw.go from (one of: base-mainnet, base-sepolia, op-mainnet, op-sepolia) (default "base-mainnet")
     -withdrawal string
         TX hash of the L2 withdrawal transaction
     -fault-proofs
