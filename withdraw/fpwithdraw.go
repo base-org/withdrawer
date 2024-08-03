@@ -3,6 +3,7 @@ package withdraw
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/ethereum-optimism/optimism/op-node/bindings"
@@ -25,6 +26,25 @@ type FPWithdrawer struct {
 	Opts     *bind.TransactOpts
 }
 
+func (w *FPWithdrawer) CheckIfProvable() error {
+	l2WithdrawalBlock, err := TxBlock(w.Ctx, w.L2Client, w.L2TxHash)
+	if err != nil {
+		return fmt.Errorf("error querying withdrawal tx block: %w", err)
+	}
+
+	latestGame, err := withdrawals.FindLatestGame(w.Ctx, &w.Factory.DisputeGameFactoryCaller, &w.Portal.OptimismPortal2Caller)
+	if err != nil {
+		return fmt.Errorf("failed to find latest game: %w", err)
+	}
+	l2BlockNumber := new(big.Int).SetBytes(latestGame.ExtraData[0:32])
+
+	if l2BlockNumber.Uint64() < l2WithdrawalBlock.Uint64() {
+		return fmt.Errorf("the latest L2 block proposed in the DisputeGameFactory is %d and is not past L2 block %d that includes the withdrawal - the withdrawal cannot be proven yet",
+			l2BlockNumber.Uint64(), l2WithdrawalBlock.Uint64())
+	}
+	return nil
+}
+
 func (w *FPWithdrawer) GetWithdrawalHash() (common.Hash, error) {
 	l2 := ethclient.NewClient(w.L2Client)
 	receipt, err := l2.TransactionReceipt(w.Ctx, w.L2TxHash)
@@ -43,10 +63,6 @@ func (w *FPWithdrawer) GetWithdrawalHash() (common.Hash, error) {
 	}
 
 	return hash, nil
-}
-
-func (w *FPWithdrawer) IsProofFinalized() (bool, error) {
-	return w.Portal.FinalizedWithdrawals(&bind.CallOpts{}, w.L2TxHash)
 }
 
 func (w *FPWithdrawer) GetProvenWithdrawal() (struct {
@@ -106,6 +122,10 @@ func (w *FPWithdrawer) ProveWithdrawal() error {
 	ctxWithTimeout, cancel := context.WithTimeout(w.Ctx, 5*time.Minute)
 	defer cancel()
 	return WaitForConfirmation(ctxWithTimeout, w.L1Client, tx.Hash())
+}
+
+func (w *FPWithdrawer) IsProofFinalized() (bool, error) {
+	return w.Portal.FinalizedWithdrawals(&bind.CallOpts{}, w.L2TxHash)
 }
 
 func (w *FPWithdrawer) FinalizeWithdrawal() error {

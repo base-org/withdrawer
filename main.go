@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum-optimism/optimism/op-node/bindings"
+	bindingspreview "github.com/ethereum-optimism/optimism/op-node/bindings/preview"
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -207,16 +208,68 @@ func main() {
 		log.Crit("Error dialing L2 client", "error", err)
 	}
 
-	portal, err := bindings.NewOptimismPortal(common.HexToAddress(n.portalAddress), l1Client)
-	if err != nil {
-		log.Crit("Error binding OptimismPortal contract", "error", err)
-	}
-
-	// determine whether to handle withdrawals with or without the fault proofs withdrawer
+	// handle withdrawals with or without the fault proofs withdrawer
 	if faultProofs {
-		// TODO: Add fault proof withdrawal logic
+		portal, err := bindingspreview.NewOptimismPortal2(common.HexToAddress(n.portalAddress), l1Client)
+		if err != nil {
+			log.Crit("Error binding OptimismPortal2 contract", "error", err)
+		}
+
+		dgf, err := bindings.NewDisputeGameFactory(common.HexToAddress(n.disputeGameFactory), l1Client)
+		if err != nil {
+			log.Crit("Error binding DisputeGameFactory contract", "error", err)
+		}
+
+		withdrawer := withdraw.FPWithdrawer{
+			Ctx:      ctx,
+			L1Client: l1Client,
+			L2Client: l2Client,
+			L2TxHash: withdrawal,
+			Portal:   portal,
+			Factory:  dgf,
+			Opts:     l1opts,
+		}
+
+		isFinalized, err := withdrawer.IsProofFinalized()
+		if err != nil {
+			log.Crit("Error querying withdrawal finalization status", "error", err)
+		}
+		if isFinalized {
+			fmt.Println("Withdrawal already finalized")
+			return
+		}
+
+		// TODO: Add functionality to generate output root proposal and prove to that proposal
+		err = withdrawer.CheckIfProvable()
+		if err != nil {
+			log.Crit("Withdrawal is not provable", "error", err)
+		}
+
+		proof, err := withdrawer.GetProvenWithdrawal()
+		if err != nil {
+			log.Crit("Error querying withdrawal proof", "error", err)
+		}
+
+		if proof.Timestamp == 0 {
+			err = withdrawer.ProveWithdrawal()
+			if err != nil {
+				log.Crit("Error proving withdrawal", "error", err)
+			}
+			fmt.Println("The withdrawal has been successfully proven, finalization of the withdrawal can be done once the dispute game has finished and the finalization period has elapsed")
+			return
+		}
+
 		// TODO: Add edge-case handling for FPs if a withdrawal needs to be re-proven due to blacklisted / failed dispute game resolution
+		err = withdrawer.FinalizeWithdrawal()
+		if err != nil {
+			log.Crit("Error completing withdrawal", "error", err)
+		}
 	} else {
+		portal, err := bindings.NewOptimismPortal(common.HexToAddress(n.portalAddress), l1Client)
+		if err != nil {
+			log.Crit("Error binding OptimismPortal contract", "error", err)
+		}
+
 		l2oo, err := bindings.NewL2OutputOracle(common.HexToAddress(n.l2OOAddress), l1Client)
 		if err != nil {
 			log.Crit("Error binding L2OutputOracle contract", "error", err)

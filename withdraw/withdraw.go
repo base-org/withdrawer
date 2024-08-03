@@ -31,26 +31,26 @@ func (w *Withdrawer) CheckIfProvable() error {
 	// check to make sure it is possible to prove the provided withdrawal
 	submissionInterval, err := w.Oracle.SUBMISSIONINTERVAL(&bind.CallOpts{})
 	if err != nil {
-		return fmt.Errorf("error querying output proposal submission interval: %s", err)
+		return fmt.Errorf("error querying output proposal submission interval: %w", err)
 	}
 
 	l2BlockTime, err := w.Oracle.L2BLOCKTIME(&bind.CallOpts{})
 	if err != nil {
-		return fmt.Errorf("error querying output proposal L2 block time: %s", err)
+		return fmt.Errorf("error querying output proposal L2 block time: %w", err)
 	}
 
 	l2OutputBlock, err := w.Oracle.LatestBlockNumber(&bind.CallOpts{})
 	if err != nil {
-		return fmt.Errorf("error querying latest proposed block: %s", err)
+		return fmt.Errorf("error querying latest proposed block: %w", err)
 	}
 
 	l2WithdrawalBlock, err := TxBlock(w.Ctx, w.L2Client, w.L2TxHash)
 	if err != nil {
-		return fmt.Errorf("error querying withdrawal tx block: %s", err)
+		return fmt.Errorf("error querying withdrawal tx block: %w", err)
 	}
 
 	if l2OutputBlock.Uint64() < l2WithdrawalBlock.Uint64() {
-		return fmt.Errorf("the latest L2 output is %d and is not past L2 block %d that includes the withdrawal, no withdrawal can be proved yet.\nPlease wait for the next proposal submission, which happens every %v",
+		return fmt.Errorf("the latest L2 output is %d and is not past L2 block %d that includes the withdrawal, no withdrawal can be proved yet - please wait for the next proposal submission, which happens every %v",
 			l2OutputBlock.Uint64(), l2WithdrawalBlock.Uint64(), time.Duration(submissionInterval.Int64()*l2BlockTime.Int64())*time.Second)
 	}
 	return nil
