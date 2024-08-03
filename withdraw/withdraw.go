@@ -9,7 +9,6 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-node/bindings"
 	"github.com/ethereum-optimism/optimism/op-node/withdrawals"
-	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -17,19 +16,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient/gethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 )
-
-func TxBlock(ctx context.Context, l2c *rpc.Client, l2TxHash common.Hash) (*big.Int, error) {
-	l2 := ethclient.NewClient(l2c)
-	// Figure out when our withdrawal was included
-	receipt, err := l2.TransactionReceipt(ctx, l2TxHash)
-	if err != nil {
-		return nil, err
-	}
-	if receipt.Status != types.ReceiptStatusSuccessful {
-		return nil, errors.New("unsuccessful withdrawal receipt status")
-	}
-	return receipt.BlockNumber, nil
-}
 
 func ProofFinalized(ctx context.Context, portal *bindings.OptimismPortal, l2TxHash common.Hash) (bool, error) {
 	return portal.FinalizedWithdrawals(&bind.CallOpts{}, l2TxHash)
@@ -108,7 +94,7 @@ func ProveWithdrawal(ctx context.Context, l1 *ethclient.Client, l2c *rpc.Client,
 	// Wait 5 mins max for confirmation
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
-	return waitForConfirmation(ctxWithTimeout, l1, tx.Hash())
+	return WaitForConfirmation(ctxWithTimeout, l1, tx.Hash())
 }
 
 func CompleteWithdrawal(ctx context.Context, l1 *ethclient.Client, l2c *rpc.Client, l2oo *bindings.L2OutputOracle, portal *bindings.OptimismPortal, l2TxHash common.Hash, finalizationPeriod *big.Int, opts *bind.TransactOpts) error {
@@ -192,27 +178,5 @@ func CompleteWithdrawal(ctx context.Context, l1 *ethclient.Client, l2c *rpc.Clie
 	// Wait 5 mins max for confirmation
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
-	return waitForConfirmation(ctxWithTimeout, l1, tx.Hash())
-}
-
-func waitForConfirmation(ctx context.Context, client *ethclient.Client, tx common.Hash) error {
-	for {
-		receipt, err := client.TransactionReceipt(ctx, tx)
-		if err == ethereum.NotFound {
-			fmt.Printf("waiting for tx confirmation\n")
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-time.After(5 * time.Second):
-			}
-		} else if err != nil {
-			return err
-		} else if receipt.Status != types.ReceiptStatusSuccessful {
-			return errors.New("unsuccessful withdrawal receipt status")
-		} else {
-			break
-		}
-	}
-	fmt.Printf("%s confirmed\n", tx.String())
-	return nil
+	return WaitForConfirmation(ctxWithTimeout, l1, tx.Hash())
 }
