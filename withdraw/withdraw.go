@@ -161,8 +161,7 @@ func (w *Withdrawer) FinalizeWithdrawal() error {
 
 	// Check if the L2 output is even old enough to include the withdrawal
 	if l2OutputBlock.Number.Uint64() < l2WithdrawalBlock.Number.Uint64() {
-		fmt.Printf("the latest L2 output is %d and is not past L2 block %d that includes the withdrawal yet, no withdrawal can be completed yet", l2OutputBlock.Number.Uint64(), l2WithdrawalBlock.Number.Uint64())
-		return nil
+		return fmt.Errorf("the latest L2 output is %d and is not past L2 block %d that includes the withdrawal yet, no withdrawal can be completed yet", l2OutputBlock.Number.Uint64(), l2WithdrawalBlock.Number.Uint64())
 	}
 
 	l1Head, err := w.L1Client.HeaderByNumber(w.Ctx, nil)
@@ -177,9 +176,8 @@ func (w *Withdrawer) FinalizeWithdrawal() error {
 	}
 
 	if l2WithdrawalBlock.Time+finalizationPeriod.Uint64() >= l1Head.Time {
-		fmt.Printf("withdrawal tx %s was included in L2 block %d (time %d) but L1 only knows of L2 proposal %d (time %d) at head %d (time %d) which has not reached output confirmation yet (period is %d)",
+		return fmt.Errorf("withdrawal tx %s was included in L2 block %d (time %d) but L1 only knows of L2 proposal %d (time %d) at head %d (time %d) which has not reached output confirmation yet (period is %d)",
 			w.L2TxHash, l2WithdrawalBlock.Number.Uint64(), l2WithdrawalBlock.Time, l2OutputBlock.Number.Uint64(), l2OutputBlock.Time, l1Head.Number.Uint64(), l1Head.Time, finalizationPeriod.Uint64())
-		return nil
 	}
 
 	// We generate a proof for the latest L2 output, which shouldn't require archive-node data if it's recent enough.
