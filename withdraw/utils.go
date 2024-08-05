@@ -14,7 +14,15 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
-func TxBlock(ctx context.Context, l2c *rpc.Client, l2TxHash common.Hash) (*big.Int, error) {
+type WithdrawHelper interface {
+	CheckIfProvable() error
+	GetProvenWithdrawalTime() (uint64, error)
+	ProveWithdrawal() error
+	IsProofFinalized() (bool, error)
+	FinalizeWithdrawal() error
+}
+
+func txBlock(ctx context.Context, l2c *rpc.Client, l2TxHash common.Hash) (*big.Int, error) {
 	l2 := ethclient.NewClient(l2c)
 	// Figure out when our withdrawal was included
 	receipt, err := l2.TransactionReceipt(ctx, l2TxHash)
@@ -27,7 +35,7 @@ func TxBlock(ctx context.Context, l2c *rpc.Client, l2TxHash common.Hash) (*big.I
 	return receipt.BlockNumber, nil
 }
 
-func WaitForConfirmation(ctx context.Context, client *ethclient.Client, tx common.Hash) error {
+func waitForConfirmation(ctx context.Context, client *ethclient.Client, tx common.Hash) error {
 	for {
 		receipt, err := client.TransactionReceipt(ctx, tx)
 		if err == ethereum.NotFound {

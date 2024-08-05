@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/big"
 	"time"
 
 	"github.com/ethereum-optimism/optimism/op-node/bindings"
@@ -44,7 +43,7 @@ func (w *Withdrawer) CheckIfProvable() error {
 		return fmt.Errorf("error querying latest proposed block: %w", err)
 	}
 
-	l2WithdrawalBlock, err := TxBlock(w.Ctx, w.L2Client, w.L2TxHash)
+	l2WithdrawalBlock, err := txBlock(w.Ctx, w.L2Client, w.L2TxHash)
 	if err != nil {
 		return fmt.Errorf("error querying withdrawal tx block: %w", err)
 	}
@@ -56,34 +55,29 @@ func (w *Withdrawer) CheckIfProvable() error {
 	return nil
 }
 
-func (w *Withdrawer) GetProvenWithdrawal() (struct {
-	OutputRoot    [32]byte
-	Timestamp     *big.Int
-	L2OutputIndex *big.Int
-}, error) {
-	empty := *new(struct {
-		OutputRoot    [32]byte
-		Timestamp     *big.Int
-		L2OutputIndex *big.Int
-	})
-
+func (w *Withdrawer) GetProvenWithdrawalTime() (uint64, error) {
 	l2 := ethclient.NewClient(w.L2Client)
 	receipt, err := l2.TransactionReceipt(w.Ctx, w.L2TxHash)
 	if err != nil {
-		return empty, err
+		return 0, err
 	}
 
 	ev, err := withdrawals.ParseMessagePassed(receipt)
 	if err != nil {
-		return empty, err
+		return 0, err
 	}
 
 	hash, err := withdrawals.WithdrawalHash(ev)
 	if err != nil {
-		return empty, err
+		return 0, err
 	}
 
-	return w.Portal.ProvenWithdrawals(&bind.CallOpts{}, hash)
+	provenWithdrawal, err := w.Portal.ProvenWithdrawals(&bind.CallOpts{}, hash)
+	if err != nil {
+		return 0, err
+	}
+
+	return provenWithdrawal.Timestamp.Uint64(), nil
 }
 
 func (w *Withdrawer) ProveWithdrawal() error {
@@ -129,7 +123,7 @@ func (w *Withdrawer) ProveWithdrawal() error {
 	// Wait 5 mins max for confirmation
 	ctxWithTimeout, cancel := context.WithTimeout(w.Ctx, 5*time.Minute)
 	defer cancel()
-	return WaitForConfirmation(ctxWithTimeout, w.L1Client, tx.Hash())
+	return waitForConfirmation(ctxWithTimeout, w.L1Client, tx.Hash())
 }
 
 func (w *Withdrawer) IsProofFinalized() (bool, error) {
@@ -222,5 +216,5 @@ func (w *Withdrawer) FinalizeWithdrawal() error {
 	// Wait 5 mins max for confirmation
 	ctxWithTimeout, cancel := context.WithTimeout(w.Ctx, 5*time.Minute)
 	defer cancel()
-	return WaitForConfirmation(ctxWithTimeout, w.L1Client, tx.Hash())
+	return waitForConfirmation(ctxWithTimeout, w.L1Client, tx.Hash())
 }

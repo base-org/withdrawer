@@ -27,7 +27,7 @@ type FPWithdrawer struct {
 }
 
 func (w *FPWithdrawer) CheckIfProvable() error {
-	l2WithdrawalBlock, err := TxBlock(w.Ctx, w.L2Client, w.L2TxHash)
+	l2WithdrawalBlock, err := txBlock(w.Ctx, w.L2Client, w.L2TxHash)
 	if err != nil {
 		return fmt.Errorf("error querying withdrawal tx block: %w", err)
 	}
@@ -45,7 +45,7 @@ func (w *FPWithdrawer) CheckIfProvable() error {
 	return nil
 }
 
-func (w *FPWithdrawer) GetWithdrawalHash() (common.Hash, error) {
+func (w *FPWithdrawer) getWithdrawalHash() (common.Hash, error) {
 	l2 := ethclient.NewClient(w.L2Client)
 	receipt, err := l2.TransactionReceipt(w.Ctx, w.L2TxHash)
 	if err != nil {
@@ -65,22 +65,19 @@ func (w *FPWithdrawer) GetWithdrawalHash() (common.Hash, error) {
 	return hash, nil
 }
 
-func (w *FPWithdrawer) GetProvenWithdrawal() (struct {
-	DisputeGameProxy common.Address
-	Timestamp        uint64
-}, error) {
-	// the proven withdrawal structure now contains an additional mapping, as withdrawal proofs are now stored per submitter address
-	empty := *new(struct {
-		DisputeGameProxy common.Address
-		Timestamp        uint64
-	})
-
-	hash, err := w.GetWithdrawalHash()
+func (w *FPWithdrawer) GetProvenWithdrawalTime() (uint64, error) {
+	hash, err := w.getWithdrawalHash()
 	if err != nil {
-		return empty, err
+		return 0, err
 	}
 
-	return w.Portal.ProvenWithdrawals(&bind.CallOpts{}, hash, w.Opts.From)
+	// the proven withdrawal structure now contains an additional mapping, as withdrawal proofs are now stored per submitter address
+	provenWithdrawal, err := w.Portal.ProvenWithdrawals(&bind.CallOpts{}, hash, w.Opts.From)
+	if err != nil {
+		return 0, err
+	}
+
+	return provenWithdrawal.Timestamp, nil
 }
 
 func (w *FPWithdrawer) ProveWithdrawal() error {
@@ -121,7 +118,7 @@ func (w *FPWithdrawer) ProveWithdrawal() error {
 	// Wait 5 mins max for confirmation
 	ctxWithTimeout, cancel := context.WithTimeout(w.Ctx, 5*time.Minute)
 	defer cancel()
-	return WaitForConfirmation(ctxWithTimeout, w.L1Client, tx.Hash())
+	return waitForConfirmation(ctxWithTimeout, w.L1Client, tx.Hash())
 }
 
 func (w *FPWithdrawer) IsProofFinalized() (bool, error) {
@@ -130,7 +127,7 @@ func (w *FPWithdrawer) IsProofFinalized() (bool, error) {
 
 func (w *FPWithdrawer) FinalizeWithdrawal() error {
 	// get the withdrawal hash
-	hash, err := w.GetWithdrawalHash()
+	hash, err := w.getWithdrawalHash()
 	if err != nil {
 		return err
 	}
@@ -172,5 +169,5 @@ func (w *FPWithdrawer) FinalizeWithdrawal() error {
 	// Wait 5 mins max for confirmation
 	ctxWithTimeout, cancel := context.WithTimeout(w.Ctx, 5*time.Minute)
 	defer cancel()
-	return WaitForConfirmation(ctxWithTimeout, w.L1Client, tx.Hash())
+	return waitForConfirmation(ctxWithTimeout, w.L1Client, tx.Hash())
 }

@@ -179,21 +179,69 @@ func main() {
 		log.Crit("Error creating signer", "error", err)
 	}
 
+	withdrawer, err := CreateWithdrawHelper(rpcFlag, withdrawal, n, s)
+	if err != nil {
+		log.Crit("Error creating withdrawer", "error", err)
+	}
+
+	// handle withdrawals with or without the fault proofs withdrawer
+	isFinalized, err := withdrawer.IsProofFinalized()
+	if err != nil {
+		log.Crit("Error querying withdrawal finalization status", "error", err)
+	}
+	if isFinalized {
+		fmt.Println("Withdrawal already finalized")
+		return
+	}
+
+	// TODO: Add functionality to generate output root proposal and prove to that proposal for FPs
+	err = withdrawer.CheckIfProvable()
+	if err != nil {
+		log.Crit("Withdrawal is not provable", "error", err)
+	}
+
+	proofTime, err := withdrawer.GetProvenWithdrawalTime()
+	if err != nil {
+		log.Crit("Error querying withdrawal proof", "error", err)
+	}
+
+	if proofTime == 0 {
+		err = withdrawer.ProveWithdrawal()
+		if err != nil {
+			log.Crit("Error proving withdrawal", "error", err)
+		}
+
+		if faultProofs {
+			fmt.Println("The withdrawal has been successfully proven, finalization of the withdrawal can be done once the dispute game has finished and the finalization period has elapsed")
+		} else {
+			fmt.Println("The withdrawal has been successfully proven, finalization of the withdrawal can be done once the finalization period has elapsed")
+		}
+		return
+	}
+
+	// TODO: Add edge-case handling for FPs if a withdrawal needs to be re-proven due to blacklisted / failed dispute game resolution
+	err = withdrawer.FinalizeWithdrawal()
+	if err != nil {
+		log.Crit("Error completing withdrawal", "error", err)
+	}
+}
+
+func CreateWithdrawHelper(l1Rpc string, withdrawal common.Hash, n network, s signer.Signer) (withdraw.WithdrawHelper, error) {
 	ctx := context.Background()
 
-	l1Client, err := ethclient.DialContext(ctx, rpcFlag)
+	l1Client, err := ethclient.DialContext(ctx, l1Rpc)
 	if err != nil {
-		log.Crit("Error dialing L1 client", "error", err)
+		return nil, fmt.Errorf("Error dialing L1 client: %w", err)
 	}
 
 	l1ChainID, err := l1Client.ChainID(ctx)
 	if err != nil {
-		log.Crit("Error querying chain ID", "error", err)
+		return nil, fmt.Errorf("Error querying chain ID: %w", err)
 	}
 
 	l1Nonce, err := l1Client.PendingNonceAt(ctx, s.Address())
 	if err != nil {
-		log.Crit("Error querying nonce", "error", err)
+		return nil, fmt.Errorf("Error querying nonce: %w", err)
 	}
 
 	l1opts := &bind.TransactOpts{
@@ -205,22 +253,21 @@ func main() {
 
 	l2Client, err := rpc.DialContext(ctx, n.l2RPC)
 	if err != nil {
-		log.Crit("Error dialing L2 client", "error", err)
+		return nil, fmt.Errorf("Error dialing L2 client: %w", err)
 	}
 
-	// handle withdrawals with or without the fault proofs withdrawer
-	if faultProofs {
+	if n.faultProofs {
 		portal, err := bindingspreview.NewOptimismPortal2(common.HexToAddress(n.portalAddress), l1Client)
 		if err != nil {
-			log.Crit("Error binding OptimismPortal2 contract", "error", err)
+			return nil, fmt.Errorf("Error binding OptimismPortal2 contract: %w", err)
 		}
 
 		dgf, err := bindings.NewDisputeGameFactory(common.HexToAddress(n.disputeGameFactory), l1Client)
 		if err != nil {
-			log.Crit("Error binding DisputeGameFactory contract", "error", err)
+			return nil, fmt.Errorf("Error binding DisputeGameFactory contract: %w", err)
 		}
 
-		withdrawer := withdraw.FPWithdrawer{
+		return &withdraw.FPWithdrawer{
 			Ctx:      ctx,
 			L1Client: l1Client,
 			L2Client: l2Client,
@@ -228,54 +275,19 @@ func main() {
 			Portal:   portal,
 			Factory:  dgf,
 			Opts:     l1opts,
-		}
-
-		isFinalized, err := withdrawer.IsProofFinalized()
-		if err != nil {
-			log.Crit("Error querying withdrawal finalization status", "error", err)
-		}
-		if isFinalized {
-			fmt.Println("Withdrawal already finalized")
-			return
-		}
-
-		// TODO: Add functionality to generate output root proposal and prove to that proposal
-		err = withdrawer.CheckIfProvable()
-		if err != nil {
-			log.Crit("Withdrawal is not provable", "error", err)
-		}
-
-		proof, err := withdrawer.GetProvenWithdrawal()
-		if err != nil {
-			log.Crit("Error querying withdrawal proof", "error", err)
-		}
-
-		if proof.Timestamp == 0 {
-			err = withdrawer.ProveWithdrawal()
-			if err != nil {
-				log.Crit("Error proving withdrawal", "error", err)
-			}
-			fmt.Println("The withdrawal has been successfully proven, finalization of the withdrawal can be done once the dispute game has finished and the finalization period has elapsed")
-			return
-		}
-
-		// TODO: Add edge-case handling for FPs if a withdrawal needs to be re-proven due to blacklisted / failed dispute game resolution
-		err = withdrawer.FinalizeWithdrawal()
-		if err != nil {
-			log.Crit("Error completing withdrawal", "error", err)
-		}
+		}, nil
 	} else {
 		portal, err := bindings.NewOptimismPortal(common.HexToAddress(n.portalAddress), l1Client)
 		if err != nil {
-			log.Crit("Error binding OptimismPortal contract", "error", err)
+			return nil, fmt.Errorf("Error binding OptimismPortal contract: %w", err)
 		}
 
 		l2oo, err := bindings.NewL2OutputOracle(common.HexToAddress(n.l2OOAddress), l1Client)
 		if err != nil {
-			log.Crit("Error binding L2OutputOracle contract", "error", err)
+			return nil, fmt.Errorf("Error binding L2OutputOracle contract: %w", err)
 		}
 
-		withdrawer := withdraw.Withdrawer{
+		return &withdraw.Withdrawer{
 			Ctx:      ctx,
 			L1Client: l1Client,
 			L2Client: l2Client,
@@ -283,39 +295,6 @@ func main() {
 			Portal:   portal,
 			Oracle:   l2oo,
 			Opts:     l1opts,
-		}
-
-		isFinalized, err := withdrawer.IsProofFinalized()
-		if err != nil {
-			log.Crit("Error querying withdrawal finalization status", "error", err)
-		}
-		if isFinalized {
-			fmt.Println("Withdrawal already finalized")
-			return
-		}
-
-		err = withdrawer.CheckIfProvable()
-		if err != nil {
-			log.Crit("Withdrawal is not provable", "error", err)
-		}
-
-		proof, err := withdrawer.GetProvenWithdrawal()
-		if err != nil {
-			log.Crit("Error querying withdrawal proof", "error", err)
-		}
-
-		if proof.Timestamp.Uint64() == 0 {
-			err = withdrawer.ProveWithdrawal()
-			if err != nil {
-				log.Crit("Error proving withdrawal", "error", err)
-			}
-			fmt.Println("The withdrawal has been successfully proven, finalization of the withdrawal can be done once the finalization period has elapsed")
-			return
-		}
-
-		err = withdrawer.FinalizeWithdrawal()
-		if err != nil {
-			log.Crit("Error completing withdrawal", "error", err)
-		}
+		}, nil
 	}
 }
