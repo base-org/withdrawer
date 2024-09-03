@@ -86,7 +86,7 @@ func main() {
 	flag.BoolVar(&faultProofs, "fault-proofs", false, "Use fault proofs")
 	flag.StringVar(&portalAddress, "portal-address", "", "Custom network OptimismPortal address")
 	flag.StringVar(&l2OOAddress, "l2oo-address", "", "Custom network L2OutputOracle address")
-	flag.StringVar(&dgfAddress, "dfg-address", "", "Custom network DisputeGameFactory address")
+	flag.StringVar(&dgfAddress, "dgf-address", "", "Custom network DisputeGameFactory address")
 	flag.StringVar(&withdrawalFlag, "withdrawal", "", "TX hash of the L2 withdrawal transaction")
 	flag.StringVar(&privateKey, "private-key", "", "Private key to use for signing transactions")
 	flag.BoolVar(&ledger, "ledger", false, "Use ledger device for signing transactions")
