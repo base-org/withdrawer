@@ -34,9 +34,9 @@ var networks = map[string]network{
 	"base-mainnet": {
 		l2RPC:              "https://mainnet.base.org",
 		portalAddress:      "0x49048044D57e1C92A77f79988d21Fa8fAF74E97e",
-		l2OOAddress:        "0x56315b90c40730925ec5485cf004d835058518A0",
-		disputeGameFactory: "0x0000000000000000000000000000000000000000",
-		faultProofs:        false,
+		l2OOAddress:        "0x0000000000000000000000000000000000000000",
+		disputeGameFactory: "0x43edB88C4B80fDD2AdFF2412A7BebF9dF42cB40e",
+		faultProofs:        true,
 	},
 	"base-sepolia": {
 		l2RPC:              "https://sepolia.base.org",
